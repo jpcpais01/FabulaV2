@@ -160,10 +160,10 @@ export default function ReadPage() {
   };
 
   return (
-    <div className="h-full flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl h-[calc(100vh-8rem)] relative">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 h-full flex flex-col">
-          <div className="flex-1 overflow-hidden px-4 sm:px-8 md:px-12">
+    <div className="h-full flex items-center justify-center">
+      <div className="w-full h-[calc(100vh-8rem)]">
+        <div className="bg-[var(--card)] h-full flex flex-col">
+          <div className="flex-1 overflow-hidden">
             <div className="h-full flex flex-col justify-center">
               {!story && !isLoading ? (
                 <div className="flex items-center justify-center h-full">
@@ -191,27 +191,29 @@ export default function ReadPage() {
                       {pages[currentPage - 1]}
                     </div>
                   </div>
-                  <div className="flex items-center justify-center gap-4 sm:gap-8">
+                  <div className="flex items-center justify-center gap-4 sm:gap-8 py-4 bg-[var(--card)] border-t border-[var(--border)]">
                     <button
                       onClick={() => turnPage('prev')}
                       disabled={currentPage === 1 || isLoading || !story}
-                      className={`p-2 rounded-full bg-gray-100 dark:bg-gray-700 
-                        ${currentPage === 1 || !story ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                      className={`p-2 rounded-full bg-[var(--muted)] hover:bg-[var(--accent)] transition-colors 
+                        ${currentPage === 1 || !story ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      aria-label="Previous page"
                     >
-                      <ChevronLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                      <ChevronLeftIcon className="h-5 w-5 text-[var(--muted-foreground)]" />
                     </button>
                     
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm text-[var(--muted-foreground)]">
                       Page {currentPage} of {pages.length}
                     </div>
 
                     <button
                       onClick={() => turnPage('next')}
                       disabled={isLoading || !story || currentPage === pages.length}
-                      className={`p-2 rounded-full bg-gray-100 dark:bg-gray-700 
-                        ${!story || currentPage === pages.length ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                      className={`p-2 rounded-full bg-[var(--muted)] hover:bg-[var(--accent)] transition-colors 
+                        ${!story || currentPage === pages.length ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      aria-label="Next page"
                     >
-                      <ChevronRightIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                      <ChevronRightIcon className="h-5 w-5 text-[var(--muted-foreground)]" />
                     </button>
                   </div>
                 </>
