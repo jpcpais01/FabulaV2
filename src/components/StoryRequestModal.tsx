@@ -1,6 +1,6 @@
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface Props {
   isOpen: boolean;
@@ -14,15 +14,66 @@ interface Props {
 export default function StoryRequestModal({ isOpen, onClose, storyType }: Props) {
   const router = useRouter();
   const [request, setRequest] = useState('');
+  const [title, setTitle] = useState('');
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+
+  const generateTitle = useCallback(async () => {
+    if (!storyType) return;
+    setIsGeneratingTitle(true);
+    try {
+      const response = await fetch('/api/story/title', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: storyType.id,
+          prompt: request
+        })
+      });
+      
+      const data = await response.json();
+      if (!data.title) throw new Error('No title returned');
+      setTitle(data.title);
+    } catch (error) {
+      console.error('Failed to generate title:', error);
+      setTitle('Untitled Story');
+    } finally {
+      setIsGeneratingTitle(false);
+    }
+  }, [request, storyType]);
+
+  // Reset title when modal opens or story type changes
+  useEffect(() => {
+    if (isOpen && storyType) {
+      setTitle('');
+      generateTitle();
+    }
+  }, [isOpen, storyType, generateTitle]);
+
+  // Regenerate title when request changes (with debounce)
+  useEffect(() => {
+    if (!isOpen || !storyType) return;
+    
+    const timer = setTimeout(() => {
+      generateTitle();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [request, generateTitle, isOpen, storyType]);
 
   if (!isOpen || !storyType) return null;
 
   const handleSubmit = () => {
+    if (!title) {
+      setTitle('Untitled Story');
+    }
+    
     const finalPrompt = request 
       ? `${storyType.prompt} Additionally, ${request}`
       : storyType.prompt;
       
-    router.push(`/read?new=true&type=${storyType.id}&prompt=${encodeURIComponent(finalPrompt)}`);
+    router.push(`/read?new=true&type=${storyType.id}&prompt=${encodeURIComponent(finalPrompt)}&title=${encodeURIComponent(title || 'Untitled Story')}`);
   };
 
   return (
@@ -38,6 +89,23 @@ export default function StoryRequestModal({ isOpen, onClose, storyType }: Props)
         
         <div className="p-6">
           <h2 className="text-lg font-light mb-6 pr-8">Any Final Requests?</h2>
+          
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-muted-foreground">Story Title</label>
+              <button
+                onClick={generateTitle}
+                disabled={isGeneratingTitle}
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                aria-label="Regenerate title"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${isGeneratingTitle ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            <div className="p-3 bg-muted/20 border border-border rounded-lg text-sm min-h-[2.5rem] flex items-center">
+              {isGeneratingTitle ? 'Generating...' : title || 'Generating title...'}
+            </div>
+          </div>
           
           <textarea
             value={request}

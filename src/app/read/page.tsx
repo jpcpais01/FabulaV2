@@ -9,7 +9,8 @@ import {
   getCurrentStory, 
   saveStoryToHistory,
   generateStoryTitle,
-  updateStoryInHistory 
+  updateStoryInHistory,
+  clearCurrentStory
 } from '@/utils/storyManager';
 
 export default function ReadPage() {
@@ -98,9 +99,11 @@ function ReadPageContent() {
       setIsLoading(true);
       setError(null);
       setCurrentPage(1); // Reset to page 1 when generating new story
+      clearCurrentStory(); // Clear any existing story from localStorage
 
       const storyType = searchParams.get('type');
       const prompt = searchParams.get('prompt');
+      const title = searchParams.get('title');
 
       const response = await fetch('/api/story', {
         method: 'POST',
@@ -109,7 +112,8 @@ function ReadPageContent() {
         },
         body: JSON.stringify({
           type: storyType,
-          prompt: prompt
+          prompt: prompt,
+          title: title
         })
       });
 
@@ -125,7 +129,7 @@ function ReadPageContent() {
 
       const newStory: Story = {
         id: Date.now().toString(),
-        title: generateStoryTitle(data.content),
+        title: title || generateStoryTitle(data.content),
         content: data.content,
         currentPage: 1, // Ensure new story starts at page 1
         createdAt: new Date().toISOString(),

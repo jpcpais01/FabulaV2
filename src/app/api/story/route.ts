@@ -7,23 +7,25 @@ const groq = new Groq({
 
 export async function POST(request: Request) {
   try {
-    let context, prompt;
+    let context, prompt, title;
     try {
       const body = await request.json();
       context = body.context;
       prompt = body.prompt;
+      title = body.title;
     } catch {
       context = null;
       prompt = null;
+      title = null;
     }
     
     const systemPrompt = context 
-      ? "You are a creative story writer. Continue the story in the same style and tone. Keep the continuation engaging and coherent with the existing narrative. Add around 500 words. Each story must be completely unique with original characters, settings, and plot."
-      : "You are a creative story writer. Write engaging, original stories that are appropriate for all ages. Keep the total length around 1000 words. Each story must be completely unique with original characters, settings, and plot. Never reuse ideas or patterns from other stories.";
+      ? "You are a creative story writer. Continue the story in the same style and tone. Keep the continuation engaging and coherent with the existing narrative. Add around 500 words. CRITICAL INSTRUCTIONS: Radically diverge from typical narrative patterns. Introduce unexpected plot twists, unconventional character motivations, or surreal elements that challenge reader expectations. Avoid clichés and predictable story structures."
+      : "You are a creative story writer. Write stories that are wildly imaginative, genre-bending, and intellectually stimulating. CRITICAL CONSTRAINTS: 1) No story can resemble any previous story in setting, character archetype, or narrative style. 2) Incorporate at least three of these elements: a unique narrative perspective, an unexpected genre fusion, a non-linear timeline, a radical world-building concept, or a meta-narrative technique. Keep total length around 1000 words. Push the boundaries of storytelling.";
 
     const userPrompt = context
       ? `Continue this story: \n\n${context}\n\nContinue from here, maintaining the same style and characters. Make it flow naturally.`
-      : prompt || "Write an engaging story. Do not start with 'Once upon a time'. Make it original and creative. Do not include a title. Create completely unique characters and settings.";
+      : `Write a story titled "${title}". ${prompt || "Write an engaging story. Do not start with 'Once upon a time'. Make it original and creative. Create completely unique characters and settings."}`;
 
     const completion = await groq.chat.completions.create({
       messages: [
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
           content: userPrompt
         }
       ],
-      model: "llama-3.3-70b-versatile",
+      model: "mixtral-8x7b-32768",
       temperature: 0.9,
       max_tokens: 2048,
       top_p: 0.9,

@@ -107,15 +107,9 @@ export default function HistoryPage() {
           <h2 className="text-lg font-light mb-4 text-foreground">
             No Stories Yet
           </h2>
-          <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             Your reading history will appear here once you start reading stories.
           </p>
-          <Link
-            href="/"
-            className="inline-block bg-foreground text-background px-8 py-3 hover:opacity-90 transition-opacity"
-          >
-            Start Reading
-          </Link>
         </div>
       </div>
     );
