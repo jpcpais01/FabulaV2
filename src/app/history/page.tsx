@@ -7,10 +7,7 @@ import type { Story } from '@/types/story';
 import { 
   TrashIcon, 
   MagnifyingGlassIcon,
-  FunnelIcon,
-  ClockIcon,
   CalendarIcon,
-  XMarkIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
