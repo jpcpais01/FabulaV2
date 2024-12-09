@@ -10,6 +10,7 @@ export interface Story {
   currentPage: number;
   createdAt: string;
   lastModified: string;
+  type?: string;
 }
 
 export interface StoryGenerationResponse {

@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import type { Story } from '@/types/story';
 import { 
   saveCurrentStory, 
   getCurrentStory, 
   saveStoryToHistory,
-  generateStoryTitle 
+  generateStoryTitle,
+  updateStoryInHistory 
 } from '@/utils/storyManager';
 
 const WORDS_PER_PAGE = 100; // Approximate words per page, will adjust based on screen size
@@ -20,7 +21,8 @@ export default function ReadPage() {
   const [pages, setPages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pageTransition, setPageTransition] = useState<'previous' | 'active' | 'next'>('active');
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+  const [isContinuing, setIsContinuing] = useState(false);
   const generationAttempted = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -28,32 +30,45 @@ export default function ReadPage() {
     if (!contentRef.current) return [text];
 
     const containerHeight = contentRef.current.clientHeight;
-    const words = text.split(/\s+/);
-    const pages: string[] = [];
-    let currentPage = '';
+    const containerWidth = contentRef.current.clientWidth;
+    
+    // Create a temporary div with the same styling
     let tempDiv = document.createElement('div');
     tempDiv.style.cssText = window.getComputedStyle(contentRef.current).cssText;
     tempDiv.style.height = 'auto';
     tempDiv.style.position = 'absolute';
     tempDiv.style.visibility = 'hidden';
-    tempDiv.style.width = `${contentRef.current.clientWidth}px`;
+    tempDiv.style.width = `${containerWidth}px`;
+    tempDiv.style.columnCount = '1'; // Ensure single column for accurate height calculation
     tempDiv.className = 'story-content';
     document.body.appendChild(tempDiv);
 
-    for (const word of words) {
-      tempDiv.textContent = (currentPage + ' ' + word).trim();
-      
-      if (tempDiv.offsetHeight > containerHeight && currentPage !== '') {
-        pages.push(currentPage.trim());
-        currentPage = word;
-        tempDiv.textContent = word;
+    // Split text into sentences
+    const sentences = text.split(/(?<=\.|\?|\!)\s+/).filter(Boolean);
+    const pages: string[] = [];
+    let currentPage = '';
+    let currentHeight = 0;
+
+    for (const sentence of sentences) {
+      // Add sentence to temp div
+      tempDiv.textContent = currentPage + (currentPage ? ' ' : '') + sentence;
+      const newHeight = tempDiv.offsetHeight;
+
+      if (newHeight > containerHeight && currentPage !== '') {
+        // Current sentence would overflow, start new page
+        pages.push(currentPage);
+        currentPage = sentence;
+        currentHeight = tempDiv.offsetHeight;
       } else {
-        currentPage = (currentPage + ' ' + word).trim();
+        // Sentence fits, add it to current page
+        currentPage = tempDiv.textContent;
+        currentHeight = newHeight;
       }
     }
 
+    // Add the last page if there's content
     if (currentPage) {
-      pages.push(currentPage.trim());
+      pages.push(currentPage);
     }
 
     document.body.removeChild(tempDiv);
@@ -79,12 +94,20 @@ export default function ReadPage() {
     try {
       setIsLoading(true);
       setError(null);
+      setCurrentPage(1); // Reset to page 1 when generating new story
+
+      const storyType = searchParams.get('type');
+      const prompt = searchParams.get('prompt');
 
       const response = await fetch('/api/story', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({
+          type: storyType,
+          prompt: prompt
+        })
       });
 
       if (!response.ok) {
@@ -101,9 +124,10 @@ export default function ReadPage() {
         id: Date.now().toString(),
         title: generateStoryTitle(data.content),
         content: data.content,
-        currentPage: 1,
+        currentPage: 1, // Ensure new story starts at page 1
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
+        type: storyType || 'general'
       };
 
       const storyPages = splitIntoPages(data.content);
@@ -119,6 +143,57 @@ export default function ReadPage() {
     }
   };
 
+  const continueStory = async () => {
+    if (!story || isContinuing) return;
+
+    try {
+      setIsContinuing(true);
+      setError(null);
+
+      // Get last 1000 words (roughly 1500 tokens) to stay well within context window
+      const words = story.content.split(/\s+/);
+      const contextWindow = words.slice(-1000).join(' ');
+
+      const response = await fetch('/api/story', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          context: contextWindow
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to continue story');
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Update the existing story with new content
+      const updatedStory: Story = {
+        ...story,
+        content: story.content + '\n\n' + data.content,
+        lastModified: new Date().toISOString(),
+      };
+
+      const storyPages = splitIntoPages(updatedStory.content);
+      setStory(updatedStory);
+      setPages(storyPages);
+      // Stay on current page, don't jump to the end
+      saveCurrentStory(updatedStory);
+      updateStoryInHistory(updatedStory); // Update instead of save new
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to continue story');
+    } finally {
+      setIsContinuing(false);
+    }
+  };
+
   useEffect(() => {
     const isNewStory = searchParams.get('new') === 'true';
     const existingStory = getCurrentStory();
@@ -131,54 +206,61 @@ export default function ReadPage() {
     } else if (existingStory?.content) {
       setStory(existingStory);
       setPages(splitIntoPages(existingStory.content));
-      setCurrentPage(existingStory.currentPage || 1);
+      // Only set currentPage from existingStory if we're not generating a new story
+      if (!isNewStory) {
+        setCurrentPage(existingStory.currentPage || 1);
+      }
     }
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const turnPage = (direction: 'next' | 'prev') => {
-    if (isLoading || !story) return;
+  const handleNavigation = (direction: 'next' | 'prev' | 'continue') => {
+    if (isLoading || isContinuing || !story) return;
     
+    if (direction === 'continue') {
+      continueStory();
+      return;
+    }
+
     const newPage = direction === 'next' 
       ? Math.min(currentPage + 1, pages.length)
       : Math.max(currentPage - 1, 1);
     
     if (newPage !== currentPage) {
-      setPageTransition(direction === 'next' ? 'next' : 'previous');
+      setSlideDirection(direction === 'next' ? 'left' : 'right');
       
-      // Wait for the exit animation
       setTimeout(() => {
         setCurrentPage(newPage);
-        setPageTransition('active');
+        setSlideDirection(null);
         
         if (story) {
           const updatedStory = { ...story, currentPage: newPage };
           setStory(updatedStory);
           saveCurrentStory(updatedStory);
         }
-      }, 400); // Match the CSS transition duration
+      }, 300);
     }
   };
 
   return (
     <div className="h-full flex items-center justify-center">
       <div className="w-full h-[calc(100vh-8rem)]">
-        <div className="bg-[var(--card)] h-full flex flex-col">
+        <div className="h-full flex flex-col">
           <div className="flex-1 overflow-hidden">
             <div className="h-full flex flex-col justify-center">
               {!story && !isLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-600 dark:text-gray-400 text-center">
+                  <p className="text-xs text-muted-foreground text-center px-4">
                     Click "Start Reading" on the home page to begin a new story
                   </p>
                 </div>
               ) : isLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="animate-pulse text-blue-600 dark:text-blue-400">
+                  <div className="text-xs text-foreground/80">
                     Generating your story...
                   </div>
                 </div>
               ) : error ? (
-                <div className="text-red-500 dark:text-red-400 text-center">
+                <div className="text-xs text-destructive text-center px-4">
                   {error}
                 </div>
               ) : pages.length > 0 ? (
@@ -186,34 +268,38 @@ export default function ReadPage() {
                   <div className="story-container">
                     <div 
                       ref={contentRef} 
-                      className={`story-content ${pageTransition}`}
+                      className={`story-content ${slideDirection ? `slide-${slideDirection}` : ''}`}
                     >
                       {pages[currentPage - 1]}
                     </div>
                   </div>
-                  <div className="flex items-center justify-center gap-4 sm:gap-8 py-4 bg-[var(--card)] border-t border-[var(--border)]">
+                  <div className="flex items-center justify-center gap-8 sm:gap-12 py-4 bg-background">
                     <button
-                      onClick={() => turnPage('prev')}
+                      onClick={() => handleNavigation('prev')}
                       disabled={currentPage === 1 || isLoading || !story}
-                      className={`p-2 rounded-full bg-[var(--muted)] hover:bg-[var(--accent)] transition-colors 
-                        ${currentPage === 1 || !story ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`p-3 hover:bg-muted/50 transition-colors duration-200 rounded-full ${
+                        currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                       aria-label="Previous page"
                     >
-                      <ChevronLeftIcon className="h-5 w-5 text-[var(--muted-foreground)]" />
+                      <ChevronLeftIcon className="h-6 w-6" />
                     </button>
-                    
-                    <div className="text-sm text-[var(--muted-foreground)]">
-                      Page {currentPage} of {pages.length}
+                    <div className="text-sm font-light tracking-wider">
+                      {currentPage}/{pages.length}
                     </div>
-
                     <button
-                      onClick={() => turnPage('next')}
-                      disabled={isLoading || !story || currentPage === pages.length}
-                      className={`p-2 rounded-full bg-[var(--muted)] hover:bg-[var(--accent)] transition-colors 
-                        ${!story || currentPage === pages.length ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      aria-label="Next page"
+                      onClick={() => handleNavigation(currentPage === pages.length ? 'continue' : 'next')}
+                      disabled={isLoading || isContinuing || !story}
+                      className={`p-3 hover:bg-muted/50 transition-colors duration-200 rounded-full ${
+                        (isLoading || isContinuing) ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      aria-label={currentPage === pages.length ? "Continue story" : "Next page"}
                     >
-                      <ChevronRightIcon className="h-5 w-5 text-[var(--muted-foreground)]" />
+                      {currentPage === pages.length ? (
+                        <SparklesIcon className={`h-6 w-6 ${isContinuing ? 'animate-pulse' : ''}`} />
+                      ) : (
+                        <ChevronRightIcon className="h-6 w-6" />
+                      )}
                     </button>
                   </div>
                 </>

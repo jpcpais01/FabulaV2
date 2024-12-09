@@ -43,3 +43,18 @@ export function deleteStory(storyId: string) {
   const updatedStories = stories.filter(story => story.id !== storyId);
   localStorage.setItem(STORIES_KEY, JSON.stringify(updatedStories));
 }
+
+export function clearAllStories() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORIES_KEY);
+}
+
+export const updateStoryInHistory = (updatedStory: Story) => {
+  if (typeof window === 'undefined') return;
+  const stories = getAllStories();
+  const index = stories.findIndex(story => story.id === updatedStory.id);
+  if (index !== -1) {
+    stories[index] = updatedStory;
+    localStorage.setItem(STORIES_KEY, JSON.stringify(stories));
+  }
+};

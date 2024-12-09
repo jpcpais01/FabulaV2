@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getAllStories, saveCurrentStory, deleteStory } from '@/utils/storyManager';
+import { getAllStories, saveCurrentStory, deleteStory, clearAllStories } from '@/utils/storyManager';
 import type { Story } from '@/types/story';
 import { TrashIcon } from '@heroicons/react/24/outline';
 
@@ -21,25 +21,30 @@ export default function HistoryPage() {
   };
 
   const handleDelete = (e: React.MouseEvent, storyId: string) => {
-    e.preventDefault(); // Prevent navigation to read page
-    e.stopPropagation(); // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
     deleteStory(storyId);
     setStories(stories.filter(story => story.id !== storyId));
   };
 
+  const handleClearAll = () => {
+    clearAllStories();
+    setStories([]);
+  };
+
   if (stories.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center p-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+      <div className="h-full flex items-center justify-center p-4 bg-background">
+        <div className="text-center max-w-sm">
+          <h2 className="text-lg font-light mb-4 text-foreground">
             No Stories Yet
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
             Your reading history will appear here once you start reading stories.
           </p>
           <Link
             href="/"
-            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-block bg-foreground text-background px-8 py-3 hover:opacity-90 transition-opacity"
           >
             Start Reading
           </Link>
@@ -49,40 +54,56 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">
-        Your Reading History
-      </h1>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {stories.map((story) => {
-          const numPages = Math.ceil((story.content?.split(/\s+/).length || 0) / WORDS_PER_PAGE) || 1;
-
-          return (
-            <Link
-              key={story.id}
-              href="/read"
-              onClick={() => handleStoryClick(story)}
-              className="block bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow relative group"
+    <div className="min-h-full bg-background px-4 py-12 md:px-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-lg font-light tracking-wide">Your Reading History</h1>
+            <button
+              onClick={handleClearAll}
+              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-300"
+              aria-label="Clear all history"
             >
-              <button
-                onClick={(e) => handleDelete(e, story.id)}
-                className="absolute top-4 right-4 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800"
-                aria-label="Delete story"
-              >
-                <TrashIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
-              </button>
-              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white pr-12">
-                {story.title}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                {new Date(story.createdAt).toLocaleDateString()}
-              </p>
-              <div className="text-sm text-gray-500 dark:text-gray-500">
-                Page {story.currentPage || 1} of {numPages}
-              </div>
-            </Link>
-          );
-        })}
+              Clear All
+            </button>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {stories.map((story) => {
+              const date = new Date(story.createdAt).toLocaleDateString(undefined, {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              });
+
+              return (
+                <Link
+                  key={story.id}
+                  href="/read"
+                  onClick={() => handleStoryClick(story)}
+                  className="group block bg-background hover:translate-x-1 transition-all duration-500 ease-out relative"
+                >
+                  <div className="p-6">
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-light text-foreground/80 group-hover:text-foreground transition-colors duration-500">
+                        {story.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground/80 group-hover:text-muted-foreground transition-colors duration-500">
+                        {date}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => handleDelete(e, story.id)}
+                      className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-500 p-2 hover:bg-muted/50"
+                      aria-label="Delete story"
+                    >
+                      <TrashIcon className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                    </button>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
