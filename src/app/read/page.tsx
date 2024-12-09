@@ -12,8 +12,6 @@ import {
   updateStoryInHistory 
 } from '@/utils/storyManager';
 
-const WORDS_PER_PAGE = 100; // Approximate words per page, will adjust based on screen size
-
 export default function ReadPage() {
   const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
