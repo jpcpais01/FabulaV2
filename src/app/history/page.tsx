@@ -6,8 +6,6 @@ import { getAllStories, saveCurrentStory, deleteStory, clearAllStories } from '@
 import type { Story } from '@/types/story';
 import { TrashIcon } from '@heroicons/react/24/outline';
 
-const WORDS_PER_PAGE = 100;
-
 export default function HistoryPage() {
   const [stories, setStories] = useState<Story[]>([]);
 

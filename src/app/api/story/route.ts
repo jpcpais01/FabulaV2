@@ -7,15 +7,13 @@ const groq = new Groq({
 
 export async function POST(request: Request) {
   try {
-    let context, type, prompt;
+    let context, prompt;
     try {
       const body = await request.json();
       context = body.context;
-      type = body.type;
       prompt = body.prompt;
     } catch {
       context = null;
-      type = null;
       prompt = null;
     }
     
@@ -51,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ content });
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Error generating story:", error);
     return NextResponse.json(
       { error: "Failed to generate story" },

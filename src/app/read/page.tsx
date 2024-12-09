@@ -33,7 +33,7 @@ export default function ReadPage() {
     const containerWidth = contentRef.current.clientWidth;
     
     // Create a temporary div with the same styling
-    let tempDiv = document.createElement('div');
+    const tempDiv = document.createElement('div');
     tempDiv.style.cssText = window.getComputedStyle(contentRef.current).cssText;
     tempDiv.style.height = 'auto';
     tempDiv.style.position = 'absolute';
@@ -47,7 +47,6 @@ export default function ReadPage() {
     const sentences = text.split(/(?<=\.|\?|\!)\s+/).filter(Boolean);
     const pages: string[] = [];
     let currentPage = '';
-    let currentHeight = 0;
 
     for (const sentence of sentences) {
       // Add sentence to temp div
@@ -58,11 +57,9 @@ export default function ReadPage() {
         // Current sentence would overflow, start new page
         pages.push(currentPage);
         currentPage = sentence;
-        currentHeight = tempDiv.offsetHeight;
       } else {
         // Sentence fits, add it to current page
         currentPage = tempDiv.textContent;
-        currentHeight = newHeight;
       }
     }
 
@@ -250,7 +247,7 @@ export default function ReadPage() {
               {!story && !isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-xs text-muted-foreground text-center px-4">
-                    Click "Start Reading" on the home page to begin a new story
+                    Click &quot;Start Reading&quot; on the home page to begin a new story
                   </p>
                 </div>
               ) : isLoading ? (
