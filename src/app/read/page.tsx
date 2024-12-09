@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import type { Story } from '@/types/story';
@@ -13,6 +13,14 @@ import {
 } from '@/utils/storyManager';
 
 export default function ReadPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+      <ReadPageContent />
+    </Suspense>
+  );
+}
+
+function ReadPageContent() {
   const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
   const [story, setStory] = useState<Story | null>(null);
