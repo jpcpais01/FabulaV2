@@ -18,12 +18,12 @@ export async function POST(request: Request) {
     }
     
     const systemPrompt = context 
-      ? "You are a creative story writer. Continue the story in the same style and tone. Keep the continuation engaging and coherent with the existing narrative. Add around 500 words."
-      : "You are a creative story writer. Write engaging, original stories that are appropriate for all ages. Keep the total length around 1000 words.";
+      ? "You are a creative story writer. Continue the story in the same style and tone. Keep the continuation engaging and coherent with the existing narrative. Add around 500 words. Each story must be completely unique with original characters, settings, and plot."
+      : "You are a creative story writer. Write engaging, original stories that are appropriate for all ages. Keep the total length around 1000 words. Each story must be completely unique with original characters, settings, and plot. Never reuse ideas or patterns from other stories.";
 
     const userPrompt = context
       ? `Continue this story: \n\n${context}\n\nContinue from here, maintaining the same style and characters. Make it flow naturally.`
-      : prompt || "Write an engaging story. Do not start with 'Once upon a time'. Make it original and creative. Do not include a title.";
+      : prompt || "Write an engaging story. Do not start with 'Once upon a time'. Make it original and creative. Do not include a title. Create completely unique characters and settings.";
 
     const completion = await groq.chat.completions.create({
       messages: [
@@ -37,10 +37,12 @@ export async function POST(request: Request) {
         }
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.7,
+      temperature: 0.9,
       max_tokens: 2048,
-      top_p: 1,
-      stream: false
+      top_p: 0.9,
+      stream: false,
+      frequency_penalty: 0.5,
+      presence_penalty: 0.5
     });
 
     const content = completion.choices[0]?.message?.content;
